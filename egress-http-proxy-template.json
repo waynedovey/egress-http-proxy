@@ -1,0 +1,208 @@
+{
+  "kind": "Template",
+  "apiVersion": "v1",
+  "metadata": {
+    "name": "egress-http-proxy",
+    "creationTimestamp": null,
+    "annotations": {
+      "openshift.io/display-name": "Egress Http Proxy",
+      "description": "Egress Http Proxy service for outbound networking restrictions",
+      "iconClass": "icon-processserver",
+      "tags": "instant-app,egressproxy"
+    }
+  },
+  "message": "A Egressproxy service has been created in your project.",
+  "objects": [
+    {
+      "kind": "Route",
+      "apiVersion": "v1",
+      "metadata": {
+        "name": "${EGRESSPROXY_SERVICE_NAME}",
+        "creationTimestamp": null
+      },
+      "spec": {
+        "to": {
+          "kind": "Service",
+          "name": "${EGRESSPROXY_SERVICE_NAME}"
+        },
+        "tls": {
+          "termination": "edge",
+          "insecureEdgeTerminationPolicy": "Redirect"
+        }
+      }
+    },
+    {
+      "kind": "DeploymentConfig",
+      "apiVersion": "v1",
+      "metadata": {
+        "name": "${EGRESSPROXY_SERVICE_NAME}",
+        "creationTimestamp": null
+      },
+      "spec": {
+        "strategy": {
+          "type": "Recreate"
+        },
+        "triggers": [
+          {
+            "type": "ImageChange",
+            "imageChangeParams": {
+              "automatic": true,
+              "containerNames": [
+                "egressproxy"
+              ],
+              "from": {
+                "kind": "ImageStreamTag",
+                "name": "${EGRESSPROXY_IMAGE_STREAM_TAG}",
+                "namespace": "${NAMESPACE}"
+              },
+              "lastTriggeredImage": ""
+            }
+          },
+          {
+            "type": "ConfigChange"
+          }
+        ],
+        "replicas": 1,
+        "selector": {
+          "name": "${EGRESSPROXY_SERVICE_NAME}"
+        },
+        "template": {
+          "metadata": {
+            "creationTimestamp": null,
+            "labels": {
+              "name": "${EGRESSPROXY_SERVICE_NAME}"
+            }
+          },
+          "spec": {
+            "serviceAccountName": "${EGRESSPROXY_SERVICE_NAME}",
+            "containers": [
+              {
+                "name": "egressproxy",
+                "image": " ",
+                "readinessProbe": {
+                  "timeoutSeconds": 3,
+                  "initialDelaySeconds": 3,
+                  "tcpSocket": {
+                      "port": 8080
+                  }
+                },
+                "livenessProbe": {
+                    "timeoutSeconds": 3,
+                    "initialDelaySeconds": 10,
+                    "failureThreshold" : 5,
+                    "tcpSocket": {
+                        "port": 8080
+                    }                    
+                },
+                "env": [
+                  {
+                    "name": "EGRESS_HTTP_PROXY_DESTINATION",
+                    "value": "*.example.com\n!192.168.1.0/24\nwww.google.com\n"
+                  }
+                ],
+                "resources": {
+                  "limits": {
+                    "memory": "${MEMORY_LIMIT}"
+                  }
+                },
+                "terminationMessagePath": "/dev/termination-log",
+                "imagePullPolicy": "IfNotPresent",
+                "capabilities": {},
+                "securityContext": {
+                  "capabilities": {},
+                  "privileged": true
+                }
+              }
+            ],
+            "restartPolicy": "Always",
+            "serviceAccount": "${EGRESSPROXY_SERVICE_NAME}",
+            "serviceAccountName": "${EGRESSPROXY_SERVICE_NAME}",
+            "dnsPolicy": "ClusterFirst"
+          }
+        }
+      }
+    },
+    {
+      "kind": "ServiceAccount",
+        "apiVersion": "v1",
+        "metadata": {
+            "name": "${EGRESSPROXY_SERVICE_NAME}",
+            "annotations": {
+            }
+        }
+    },
+    {
+      "kind": "RoleBinding",
+      "apiVersion": "v1",
+      "metadata": {
+          "name": "${EGRESSPROXY_SERVICE_NAME}_edit"
+      },
+      "groupNames": null,
+      "subjects": [
+          {
+              "kind": "ServiceAccount",
+              "name": "${EGRESSPROXY_SERVICE_NAME}"
+          }
+      ],
+      "roleRef": {
+          "name": "edit"
+      }
+    },    
+    {
+       "kind": "Service",
+       "apiVersion": "v1",
+       "metadata": {
+         "name": "${EGRESSPROXY_SERVICE_NAME}",
+         "annotations": {
+           "service.openshift.io/infrastructure": "true"
+         },
+         "creationTimestamp": null
+       },
+       "spec": {
+         "ports": [
+           {
+             "name": "web",
+             "protocol": "TCP",
+             "port": 8080,
+             "targetPort": 8080,
+             "nodePort": 0
+           }
+         ],
+         "selector": {
+           "name": "${EGRESSPROXY_SERVICE_NAME}"
+         },
+         "type": "ClusterIP",
+         "sessionAffinity": "None"
+       }
+    }
+  ],
+  "parameters": [
+    {
+      "name": "EGRESSPROXY_SERVICE_NAME",
+      "displayName": "Egressproxy Service Name",
+      "description": "The name of the OpenShift Service exposed for the Egressproxy container.",
+      "value": "egressproxy"
+    },
+    {
+      "name": "MEMORY_LIMIT",
+      "displayName": "Memory Limit",
+      "description": "Maximum amount of memory the container can use.",
+      "value": "256Mi"
+    },
+    {
+      "name": "NAMESPACE",
+      "displayName": "Egressproxy ImageStream Namespace",
+      "description": "The OpenShift Namespace where the Egressproxy ImageStream resides.",
+      "value": "openshift"
+    },
+    {
+      "name": "EGRESSPROXY_IMAGE_STREAM_TAG",
+      "displayName": "Egressproxy ImageStreamTag",
+      "description": "Name of the ImageStreamTag to be used for the Egressproxy image.",
+      "value": "ose-egress-http-proxy:latest"
+    }
+  ],
+  "labels": {
+    "template": "egress-http-proxy-template"
+  }
+}

@@ -1,0 +1,24 @@
+oc import-image my-openshift3/ose-egress-http-proxy --from=registry.access.redhat.com/openshift3/ose-egress-http-proxy --confirm -n openshift 
+oc new-project proxy
+oc project proxy
+oc adm policy add-scc-to-user privileged system:serviceaccount:proxy:egressproxy
+oc annotate namespace proxy 'net.beta.kubernetes.io/network-policy={"ingress":{"isolation":"DefaultDeny"}}'
+
+oc create -f - << EOF
+kind: NetworkPolicy
+apiVersion: extensions/v1beta1
+metadata:
+  name: allow-proxy
+spec:
+  podSelector:
+    matchLabels:
+      role: proxy
+  ingress:
+  - ports:
+    - protocol: TCP
+      port: 8080
+EOF
+
+oc label namespace proxy role=proxy
+
+curl --proxy http://egressproxy.proxy:8080 www.example.com
