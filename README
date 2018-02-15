@@ -1,3 +1,7 @@
+******* README *******
+
+This is a guide to using an Egress HTTP Proxy with the ovs-multitenant plugin. NetworkPolicy is then used to allow certain Pods and Namespaces. 
+
 oc import-image my-openshift3/ose-egress-http-proxy --from=registry.access.redhat.com/openshift3/ose-egress-http-proxy --confirm -n openshift 
 oc new-project proxy
 oc project proxy
